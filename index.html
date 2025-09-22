@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>絵本ビューア</title>
+
+<style>
+  @font-face {
+    font-family: "DQFont";
+    src: url("fonts/DQFont.ttf") format("truetype");
+  }
+
+  body {
+    margin: 0;
+    background: #202020;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    font-family: "DQFont", sans-serif;
+  }
+
+  #book {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 95%;
+    max-width: 1000px;
+    margin: 10px auto;
+    background: #101010;
+    border: 4px solid #c0a060;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    padding: 10px;
+  }
+
+  #viewer {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    transition: transform 0.6s ease;
+  }
+
+  img.book-page {
+    max-width: 100%;
+    max-height: 45vh;
+    object-fit: contain;
+    display: block;
+    border-radius: 8px;
+  }
+
+  #textBox {
+    margin-top: 10px;
+    font-size: clamp(14px, 2.2vw, 18px);
+    line-height: 1.9;
+    letter-spacing: 1.3px;
+    text-align: left;
+    background: #000;
+    border: 4px double #fff;
+    border-radius: 8px;
+    padding: 15px;
+    white-space: pre-line;
+    width: 100%;
+    max-height: 28vh;
+    overflow-y: auto;
+  }
+
+  #controls {
+    margin: 12px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+  }
+
+  button {
+    background: #c0a060;
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    font-size: clamp(12px, 2vw, 16px);
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: "DQFont", sans-serif;
+    transition: background 0.3s;
+  }
+
+  button:hover:not(:disabled) {
+    background: #e0c070;
+  }
+
+  button:disabled {
+    background: #555;
+    cursor: not-allowed;
+    color: #999;
+  }
+
+  .flip-left { transform: rotateY(-90deg); }
+  .flip-right { transform: rotateY(90deg); }
+
+  /* 横向き画面では画像とテキストを横並びに */
+  @media (min-width: 768px) and (orientation: landscape) {
+    #book {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 20px;
+    }
+    #viewer, #textBox {
+      flex: 1;
+      margin: 10px;
+      max-height: 70vh;
+    }
+    #textBox {
+      font-size: clamp(14px, 1.6vw, 20px);
+    }
+  }
+</style>
+</head>
+<body>
+  <audio id="bgm" src="bgm.mp3" loop></audio>
+
+  <div id="book">
+    <div id="viewer">
+      <img id="pageImage" class="book-page" src="" alt="絵本ページ">
+    </div>
+    <div id="textBox"></div>
+  </div>
+
+  <div id="controls">
+    <button id="prevBtn">◀ まえへ</button>
+    <button id="nextBtn">つぎへ ▶</button>
+    <button id="soundBtn">🔊 サウンド開始</button>
+  </div>
+
+<script>
+  const pages = [
+    { img: "images/page01.png", text: "夜の静かな部屋で、お兄さんは妹に物語を読み聞かせていました。\n窓の外には、群青色の空に星々がきらめき、虫たちの声がかすかに響きます。\n妹は布団に包まれ、お兄さんの声に安心して耳を傾けました。" },
+    { img: "images/page02.png", text: "物語の主人公の少年は、勇気を胸に旅立ちました。\n森の小道に入ると木漏れ日が差し、リスや小鳥が集まります。\n「君を待っていたんだよ」――そんな瞳で動物たちは彼を見つめました。" },
+    { img: "images/page03.png", text: "けれど森は優しいばかりではありません。\n木々の間に巨大な蜘蛛の巣が張り巡らされ、光る壁のように立ちはだちました。\n中心には黒い影がじっと少年を見下ろしていました。" },
+    { img: "images/page04.png", text: "そのとき、枝の上から小さなリスが声をあげました。\n「怖がらないで」――励ますように尾を揺らします。\n少年の胸にほんの少し勇気がともりました。" },
+    { img: "images/page05.png", text: "しかし蜘蛛の影は濃くなり、糸は風に震えて不気味な音を立てました。\n少年は心臓が早鐘を打つのを感じながら、どう進むべきか迷いました。" },
+    { img: "images/page06.png", text: "その時です。森の奥から、かすかな声が聞こえました。\n『こっちだよ… こっちだよ…』\nその声は懐かしく、光の粒のように柔らかでした。" },
+    { img: "images/page07.png", text: "声をたどると、青白く光る宝石を持つ少女がいました。\nその光は妹の笑顔を思い出させ、少年に旅の意味を思い出させました。" },
+    { img: "images/page08.png", text: "少女が宝石を掲げると、夜空に光の柱が立ちのぼりました。\n光は遠い山の頂へ伸び、二人の心をひとつにしました。" },
+    { img: "images/page09.png", text: "険しい山道を進みながら、二人は互いに励まし合いました。\nリスもついてきて、その存在が心を強くしました。\nやがて澄んだ空気と星の輝きが彼らを迎えました。" },
+    { img: "images/page10.png", text: "山頂にたどり着いたとき、翼を広げた巨大な鳥がいました。\nその羽は星屑をまとい、夜空の中で神々しく輝いていました。" },
+    { img: "images/page10.png", text: "二人が宝石をかざすと、鳥は光をまとい夜空へ舞い上がりました。\n輝きは森も山も、生き物も包み込みました。\n少年は気づきました――勇気こそが仲間を結ぶ光だったのだと。" },
+    { img: "images/page10.png", text: "物語の最後のページを閉じたとき、妹はすでに眠っていました。\n窓の外の一番星は、まるで鳥が羽ばたいた証のように輝いていました。" }
+  ];
+
+  let currentPage = 0;
+  const pageImage = document.getElementById("pageImage");
+  const textBox = document.getElementById("textBox");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const viewer = document.getElementById("viewer");
+  const bgm = document.getElementById("bgm");
+  let audioCtx = null;
+
+  function playFlipSound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+    osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+  }
+
+  function renderPage(animation) {
+    if (animation) {
+      viewer.classList.add(animation);
+      setTimeout(() => {
+        viewer.classList.remove(animation);
+        updateContent();
+      }, 300);
+    } else {
+      updateContent();
+    }
+  }
+
+  function updateContent() {
+    const page = pages[currentPage];
+    pageImage.src = page.img;
+    pageImage.alt = page.text;
+    textBox.textContent = page.text;
+    prevBtn.disabled = currentPage === 0;
+    nextBtn.disabled = currentPage === pages.length - 1;
+  }
+
+  prevBtn.addEventListener("click", () => {
+    if (currentPage > 0) {
+      currentPage--;
+      renderPage("flip-left");
+      playFlipSound();
+    }
+  });
+
+  nextBtn.addEventListener("click", () => {
+    if (currentPage < pages.length - 1) {
+      currentPage++;
+      renderPage("flip-right");
+      playFlipSound();
+    }
+  });
+
+  document.getElementById("soundBtn").addEventListener("click", () => {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    bgm.play();
+    alert("サウンドを開始しました 🎵");
+  });
+
+  renderPage();
+</script>
+</body>
+</html>
